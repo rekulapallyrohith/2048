@@ -2,7 +2,7 @@ name: CI for game 2048
 on:
     push:
         branches:
-            - main
+            - master
 env:
     IMAGE_NAME: 2048
     REGISTRY: docker.io
