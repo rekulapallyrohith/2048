@@ -51,13 +51,17 @@ jobs:
             echo "Deploying image: $IMAGE"
             docker pull $IMAGE
 
-            # Cleanup any leftover 'green' container from failed runs
+            # 1. Stop and remove ANY existing container using our name or port
+            # We do this first to free up port 8080
+            docker stop 2048-blue || true
+            docker rm 2048-blue || true
             docker stop 2048-green || true
             docker rm 2048-green || true
 
-            # Run NEW (GREEN)
+            # 2. Run the NEW container as 'blue' immediately
+            # (Since we are on a single VM, we don't need to rename)
             docker run -d \
-              --name 2048-green \
+              --name 2048-blue \
               -p 8080:80 \
               --log-driver json-file \
               --log-opt max-size=10m \
@@ -65,12 +69,4 @@ jobs:
               --restart always \
               $IMAGE
 
-            # Simple Health Check (Wait for container to be 'up')
-            sleep 10
-
-            # Stop and Remove OLD (BLUE)
-            docker stop 2048-blue || true
-            docker rm 2048-blue || true
-
-            # Promote GREEN → BLUE
-            docker rename 2048-green 2048-blue
+            echo "Deployment successful on port 8080"
