@@ -4,6 +4,7 @@ on:
     branches:
       - master
   workflow_dispatch:
+
 env:
   IMAGE_NAME: 2048
   REGISTRY: docker.io
@@ -15,29 +16,32 @@ jobs:
     steps:
       - name: checkout source code
         uses: actions/checkout@v4
+
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          registry: ${{env.REGISTRY}}
-          username: ${{secrets.DOCKER_USERNAME}}
-          password: ${{secrets.DOCKER_PASSWORD}}
-      - name: Build Docker image
-        run: |
-          docker image build \
-            -t ${{secrets.DOCKER_USERNAME}}/${{env.IMAGE_NAME}}:${{github.sha}} \
-            -t ${{secrets.DOCKER_USERNAME}}/${{env.IMAGE_NAME}}:latest .
-      - name: Push docker image
-        run: |
-          docker push ${{secrets.DOCKER_USERNAME}}/${{env.IMAGE_NAME}}:${{github.sha}}
-          docker push ${{secrets.DOCKER_USERNAME}}/${{env.IMAGE_NAME}}:latest
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+
   deploy:
     name: Deploy to production vm
     needs: build-and-push
     runs-on: ubuntu-latest
-
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
@@ -45,10 +49,13 @@ jobs:
           envs: IMAGE
           script: |
             echo "Deploying image: $IMAGE"
-
             docker pull $IMAGE
 
-            # Run GREEN
+            # Cleanup any leftover 'green' container from failed runs
+            docker stop 2048-green || true
+            docker rm 2048-green || true
+
+            # Run NEW (GREEN)
             docker run -d \
               --name 2048-green \
               -p 8080:80 \
@@ -58,13 +65,12 @@ jobs:
               --restart always \
               $IMAGE
 
+            # Simple Health Check (Wait for container to be 'up')
             sleep 10
 
-            # Stop BLUE
+            # Stop and Remove OLD (BLUE)
             docker stop 2048-blue || true
             docker rm 2048-blue || true
 
             # Promote GREEN → BLUE
             docker rename 2048-green 2048-blue
-        env:
-          IMAGE: rekulapallyrohith/2048:${{ github.sha }}
