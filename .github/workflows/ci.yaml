@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - master
-  workflow_dispatch: 
+  workflow_dispatch:
 env:
   IMAGE_NAME: 2048
   REGISTRY: docker.io
@@ -43,11 +43,27 @@ jobs:
           username: ${{secrets.SERVER_USER}}
           key: ${{secrets.SERVER_SSH_KEY}}
           script: |
-            docker pull ${{ secrets.DOCKER_USERNAME }}/2048:latest
-            docker stop 2048 || true
-            docker rm 2048 || true
+
+            IMAGE="rekulapallyrohith/2048:${GITHUB_SHA}"
+
+            docker pull $IMAGE
+
+            # Run GREEN
             docker run -d \
-              --name 2048 \
-              -p 80:80 \
+              --name 2048-green \
+              -p 8080:80 \
+              --log-driver json-file \
+              --log-opt max-size=10m \
+              --log-opt max-file=3 \
               --restart always \
-              ${{ secrets.DOCKER_USERNAME }}/2048:latest
+              $IMAGE
+
+            # Wait for health
+            sleep 10
+
+            # Stop BLUE
+            docker stop 2048-blue || true
+            docker rm 2048-blue || true
+
+            # Promote GREEN → BLUE
+            docker rename 2048-green 2048-blue
