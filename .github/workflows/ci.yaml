@@ -38,12 +38,11 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
-        env:
-          IMAGE: rekulapallyrohith/2048:${{ github.sha }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: IMAGE
           script: |
             echo "Deploying image: $IMAGE"
 
@@ -59,7 +58,6 @@ jobs:
               --restart always \
               $IMAGE
 
-            # Wait for container to stabilize
             sleep 10
 
             # Stop BLUE
@@ -68,3 +66,5 @@ jobs:
 
             # Promote GREEN → BLUE
             docker rename 2048-green 2048-blue
+        env:
+          IMAGE: rekulapallyrohith/2048:${{ github.sha }}
