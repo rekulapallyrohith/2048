@@ -68,5 +68,4 @@ jobs:
               --log-opt max-file=3 \
               --restart always \
               $IMAGE
-
             echo "Deployment successful on port 8080"
