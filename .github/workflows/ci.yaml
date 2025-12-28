@@ -1,6 +1,6 @@
 name: CI for game 2048
 on:
-  push:
+  pull_request:
     branches:
       - master
   workflow_dispatch:
