@@ -5,15 +5,14 @@ on:
         branches:
             - master
     workflow_dispatch:
-      
 
 permissions:
     id-token: write
     contents: read
 
 env:
-  IMAGE_NAME: 2048
-  REGISTRY: docker.io
+    IMAGE_NAME: 2048
+    REGISTRY: docker.io
 
 jobs:
     build-and-push:
@@ -44,6 +43,8 @@ jobs:
               with:
                   role-to-assume: arn:aws:iam::810044336424:role/GitHubActionsEKSRole
                   aws-region: ap-south-1
+            - name: Verify AWS identity
+              run: aws sts get-caller-identity
 
             - name: Update kubeconfig
               run: |
